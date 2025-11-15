@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres:
     container_name: postgres
@@ -33,14 +35,12 @@ services:
       KC_DB_PASSWORD: keycloak
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
+      KC_HTTP_MANAGEMENT_PORT: 10829
     ports:
-      - 7777:8080
+      - "7777:8080"
     restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/10829;echo -e \"GET /health/ready HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n\" >&3;grep \"HTTP/1.1 200 OK\" <&3"]
       interval: 15s
       timeout: 10s
       retries: 20
@@ -93,7 +93,7 @@ services:
     environment:
       QUARKUS_OIDC_AUTH_SERVER_URL: http://keycloak:8080/realms/car-rental
       QUARKUS_OIDC_CLIENT_ID: users-service
-      QUARKUS_OIDC_TOKEN_STATE_MANAGER_SPLIT_TOKENS: true
+      QUARKUS_OIDC_TOKEN_STATE_MANAGER_SPLIT_TOKENS: "true"
     ports:
       - "8080:8080"
     depends_on:
@@ -113,20 +113,13 @@ services:
       QUARKUS_SMALLRYE_GRAPHQL_CLIENT_INVENTORY_URL: http://inventory-service:8083/graphql
       QUARKUS_OIDC_AUTH_SERVER_URL: http://keycloak:8080/realms/car-rental
       QUARKUS_OIDC_CLIENT_ID: reservation-service
-      QUARKUS_OIDC_TOKEN_STATE_MANAGER_SPLIT_TOKENS: true
+      QUARKUS_OIDC_TOKEN_STATE_MANAGER_SPLIT_TOKENS: "true"
       QUARKUS_DATASOURCE_USERNAME: user
       QUARKUS_DATASOURCE_PASSWORD: pass
       QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://reservation-postgres:5432/reservation
       QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: drop-and-create
     ports:
       - "8081:8081"
-    depends_on:
-      keycloak:
-        condition: service_healthy
-      reservation-postgres:
-        condition: service_healthy
-      inventory-service:
-        condition: service_healthy
     restart: on-failure
     networks:
       - keycloak_network
@@ -144,9 +137,6 @@ services:
       QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: drop-and-create
     ports:
       - "8083:8083"
-    depends_on:
-      inventory-mysql:
-        condition: service_healthy
     restart: on-failure
     networks:
       - keycloak_network
