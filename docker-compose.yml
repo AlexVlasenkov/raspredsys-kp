@@ -68,13 +68,21 @@ services:
       QUARKUS_OIDC_CLIENT_ID: users-service
       QUARKUS_OIDC_CONNECTION_RETRY_COUNT: 10
       QUARKUS_OIDC_CONNECTION_TIMEOUT: 30000
+      GLOBAL_QUARKUS_MANAGEMENT_PORT: 21054
     ports:
       - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:21054/q/health/ready"]
+      interval: 15s
+      retries: 5
+      timeout: 2s
+      start_period: 10s
+    restart: unless-stopped
+    depends_on:
+      mysql-inventory:
+        condition: service_started
     networks:
       - car-rental-network
-    depends_on:
-      - keycloak
-    restart: unless-stopped
 
   inventory-service:
     build:
@@ -89,14 +97,22 @@ services:
       QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: drop-and-create
       QUARKUS_DATASOURCE_REACTIVE_RECONNECT_ATTEMPTS: 10
       QUARKUS_DATASOURCE_REACTIVE_RECONNECT_INTERVAL: 5s
+      GLOBAL_QUARKUS_MANAGEMENT_PORT: 21054
     ports:
       - "8083:8080"
       - "9000:9000"
+    healthcheck:
+      test: [ "CMD", "curl", "http://localhost:21054/q/health/ready" ]
+      interval: 15s
+      retries: 5
+      timeout: 2s
+      start_period: 10s
+    depends_on:
+      mysql-inventory:
+        condition: service_started
+    restart: unless-stopped
     networks:
       - car-rental-network
-    depends_on:
-      - mysql-inventory
-    restart: unless-stopped
 
   reservation-service:
     build:
@@ -116,15 +132,21 @@ services:
       QUARKUS_OIDC_CONNECTION_TIMEOUT: 30000
       QUARKUS_DATASOURCE_REACTIVE_RECONNECT_ATTEMPTS: 10
       QUARKUS_DATASOURCE_REACTIVE_RECONNECT_INTERVAL: 5s
+      GLOBAL_QUARKUS_MANAGEMENT_PORT: 21054
     ports:
       - "8081:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "http://localhost:21054/q/health/ready" ]
+      interval: 15s
+      retries: 5
+      timeout: 2s
+      start_period: 10s
+    depends_on:
+      postgres-reservation:
+        condition: service_started
+    restart: unless-stopped
     networks:
       - car-rental-network
-    depends_on:
-      - keycloak
-      - postgres-reservation
-      - inventory-service
-    restart: unless-stopped
 
   rental-service:
     build:
@@ -132,11 +154,18 @@ services:
       dockerfile: src/main/docker/Dockerfile.jvm
     environment:
       QUARKUS_HTTP_PORT: 8080
+      GLOBAL_QUARKUS_MANAGEMENT_PORT: 21054
     ports:
       - "8082:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "http://localhost:21054/q/health/ready" ]
+      interval: 15s
+      retries: 5
+      timeout: 2s
+      start_period: 10s
+    restart: unless-stopped
     networks:
       - car-rental-network
-    restart: unless-stopped
 
 networks:
   car-rental-network:
