@@ -1,13 +1,13 @@
 package org.acme.rental;
 
 import io.quarkus.logging.Log;
-
-import java.time.LocalDate;
-import java.util.concurrent.atomic.AtomicLong;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+
+import java.time.LocalDate;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Path("/rental")
 public class RentalResource {
@@ -20,8 +20,8 @@ public class RentalResource {
     public Rental start(String userId,
                         Long reservationId) {
         Log.infof("Starting rental for %s with reservation %s",
-        userId, reservationId);
+                userId, reservationId);
         return new Rental(id.incrementAndGet(), userId, reservationId,
-            LocalDate.now());
+                LocalDate.now());
     }
 }

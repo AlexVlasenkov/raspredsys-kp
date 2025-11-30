@@ -1,13 +1,7 @@
 package org.acme.reservation.rest;
 
-import java.time.LocalDate;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import io.quarkus.logging.Log;
+import io.quarkus.security.Authenticated;
 import io.smallrye.graphql.client.GraphQLClient;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -26,9 +20,17 @@ import org.acme.reservation.reservation.ReservationsRepository;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.resteasy.reactive.RestQuery;
 
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-@Path("reservation")
+
+@Path("/reservation")
 @Produces(MediaType.APPLICATION_JSON)
+@Authenticated
 public class ReservationResource {
 
     private final ReservationsRepository reservationsRepository;
@@ -46,11 +48,11 @@ public class ReservationResource {
         this.rentalClient = rentalClient;
     }
 
-    @Consumes(MediaType.APPLICATION_JSON)
     @POST
+    @Consumes(MediaType.APPLICATION_JSON)
     public Reservation make(Reservation reservation) {
         reservation.userId = context.getUserPrincipal() != null ?
-            context.getUserPrincipal().getName() : "anonymous";
+                context.getUserPrincipal().getName() : "anonymous";
         Reservation result = reservationsRepository.save(reservation);
         if (reservation.startDay.equals(LocalDate.now())) {
             Rental rental = rentalClient.start(reservation.userId, result.id);
@@ -60,7 +62,7 @@ public class ReservationResource {
     }
 
     @GET
-    @Path("availability")
+    @Path("/availability")
     public Collection<Car> availability(@RestQuery LocalDate startDate,
                                         @RestQuery LocalDate endDate) {
         // obtain all cars from inventory
@@ -83,14 +85,14 @@ public class ReservationResource {
     }
 
     @GET
-    @Path("all")
+    @Path("/all")
     public Collection<Reservation> allReservations() {
         String userId = context.getUserPrincipal() != null ?
-            context.getUserPrincipal().getName() : null;
+                context.getUserPrincipal().getName() : null;
         return reservationsRepository.findAll()
-            .stream()
-            .filter(reservation -> userId == null ||
-                userId.equals(reservation.userId))
-            .collect(Collectors.toList());
+                .stream()
+                .filter(reservation -> userId == null ||
+                        userId.equals(reservation.userId))
+                .collect(Collectors.toList());
     }
 }
