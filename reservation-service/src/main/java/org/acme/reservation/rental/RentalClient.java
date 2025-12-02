@@ -6,6 +6,7 @@ import jakarta.ws.rs.Path;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import org.jboss.resteasy.reactive.RestPath;
 
+// прослушивание запросов
 @RegisterRestClient(baseUri = "http://localhost:8082")
 @Path("/rental")
 public interface RentalClient {

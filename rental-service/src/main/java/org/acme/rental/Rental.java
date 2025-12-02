@@ -2,6 +2,8 @@ package org.acme.rental;
 
 import java.time.LocalDate;
 
+// прокат автомобилей
+// вызывается службой бронирования (reservation)
 public class Rental {
 
     private final Long id;

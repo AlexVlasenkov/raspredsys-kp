@@ -10,6 +10,8 @@ import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Optional;
 
+// сервис инвентаризации
+// доступность и работа с автомобилями из гаражей автопарка
 @GraphQLApi
 public class GraphQLInventoryService {
 

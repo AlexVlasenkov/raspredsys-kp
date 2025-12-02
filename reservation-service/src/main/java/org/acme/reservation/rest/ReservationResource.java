@@ -65,17 +65,13 @@ public class ReservationResource {
     @Path("/availability")
     public Collection<Car> availability(@RestQuery LocalDate startDate,
                                         @RestQuery LocalDate endDate) {
-        // obtain all cars from inventory
         List<Car> availableCars = inventoryClient.allCars();
-        // create a map from id to car
         Map<Long, Car> carsById = new HashMap<>();
         for (Car car : availableCars) {
             carsById.put(car.id, car);
         }
 
-        // get all current reservations
         List<Reservation> reservations = reservationsRepository.findAll();
-        // for each reservation, remove the car from the map
         for (Reservation reservation : reservations) {
             if (reservation.isReserved(startDate, endDate)) {
                 carsById.remove(reservation.carId);
