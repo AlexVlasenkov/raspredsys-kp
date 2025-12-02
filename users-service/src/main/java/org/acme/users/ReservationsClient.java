@@ -1,4 +1,4 @@
-package org.acme.users.client;
+package org.acme.users;
 
 import io.quarkus.oidc.token.propagation.AccessToken;
 import jakarta.ws.rs.GET;
@@ -12,20 +12,20 @@ import org.jboss.resteasy.reactive.RestQuery;
 import java.time.LocalDate;
 import java.util.Collection;
 
-@RegisterRestClient(configKey = "reservation-service")
+@RegisterRestClient(baseUri = "http://localhost:8081")
 @AccessToken
-@Path("/reservation")
+@Path("reservation")
 public interface ReservationsClient {
 
     @GET
-    @Path("/all")
+    @Path("all")
     Collection<Reservation> allReservations();
 
     @POST
     Reservation make(Reservation reservation);
 
     @GET
-    @Path("/availability")
+    @Path("availability")
     Collection<Car> availability(@RestQuery LocalDate startDate,
                                  @RestQuery LocalDate endDate);
 }

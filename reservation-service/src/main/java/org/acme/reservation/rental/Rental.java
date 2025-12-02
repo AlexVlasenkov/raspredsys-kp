@@ -2,16 +2,14 @@ package org.acme.reservation.rental;
 
 import java.time.LocalDate;
 
-// прокат автомобилей
-// вызывается reservation (служба бронирования)
 public class Rental {
 
-    private final Long id;
+    private final String id;
     private final String userId;
     private final Long reservationId;
     private final LocalDate startDate;
 
-    public Rental(Long id, String userId, Long reservationId,
+    public Rental(String id, String userId, Long reservationId,
                   LocalDate startDate) {
         this.id = id;
         this.userId = userId;
@@ -19,7 +17,7 @@ public class Rental {
         this.startDate = startDate;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 

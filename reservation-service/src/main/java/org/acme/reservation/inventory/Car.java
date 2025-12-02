@@ -1,6 +1,5 @@
 package org.acme.reservation.inventory;
 
-// POJO
 public class Car {
 
     public Long id;

@@ -1,8 +1,10 @@
 package org.acme.reservation.inventory;
 
+import io.smallrye.mutiny.Uni;
+
 import java.util.List;
 
 public interface InventoryClient {
-    // получение всех автомобилей. Служба инвентаризации
-    List<Car> allCars();
+
+    Uni<List<Car>> allCars();
 }
