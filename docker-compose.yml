@@ -51,7 +51,7 @@ services:
       KC_DB_PASSWORD: keycloak
       KC_HTTP_ENABLED: "true"
     ports:
-      - "7777:8080"
+      - "8080:8080"
     restart: always
     depends_on:
       - postgres
@@ -64,13 +64,14 @@ services:
       dockerfile: src/main/docker/Dockerfile.jvm
     environment:
       QUARKUS_PROFILE: prod
-      QUARKUS_OIDC_AUTH_SERVER_URL: http://keycloak:8080/realms/car-rental
+      QUARKUS_OIDC_AUTH_PUBLIC_SERVER_URL: http://keycloak:8080/realms/car-rental
       QUARKUS_OIDC_CLIENT_ID: users-service
       QUARKUS_OIDC_CONNECTION_RETRY_COUNT: 10
       QUARKUS_OIDC_CONNECTION_TIMEOUT: 30000
       GLOBAL_QUARKUS_MANAGEMENT_PORT: 21054
+      REST_CLIENT_RESERVATION_SERVICE_URL: http://reservation-service:8080
     ports:
-      - "8080:8080"
+      - "8084:8080"
     healthcheck:
       test: ["CMD", "curl", "http://localhost:21054/q/health/ready"]
       interval: 15s
