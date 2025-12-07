@@ -5,7 +5,9 @@ import io.quarkus.logging.Log;
 import io.smallrye.graphql.client.GraphQLClient;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.reactive.messaging.MutinyEmitter;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -33,6 +35,7 @@ import java.util.stream.Collectors;
 
 @Path("reservation")
 @Produces(MediaType.APPLICATION_JSON)
+@Authenticated
 public class ReservationResource {
 
     public static final double STANDARD_RATE_PER_DAY = 19.99;
@@ -53,8 +56,9 @@ public class ReservationResource {
         this.rentalClient = rentalClient;
     }
 
-    @Consumes(MediaType.APPLICATION_JSON)
     @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("car-rental-reservation-create")
     @WithTransaction
     public Uni<Reservation> make(Reservation reservation) {
         reservation.userId = context.getUserPrincipal() != null ?
@@ -91,6 +95,7 @@ public class ReservationResource {
 
     @GET
     @Path("availability")
+    @RolesAllowed("car-rental-car-read")
     public Uni<Collection<Car>> availability(@RestQuery LocalDate startDate,
                                              @RestQuery LocalDate endDate) {
         // obtain all cars from inventory
@@ -117,6 +122,7 @@ public class ReservationResource {
 
     @GET
     @Path("all")
+    @RolesAllowed("car-rental-reservation-read")
     public Uni<List<Reservation>> allReservations() {
         String userId = context.getUserPrincipal() != null ?
             context.getUserPrincipal().getName() : null;

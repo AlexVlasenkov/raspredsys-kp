@@ -9,7 +9,29 @@ services:
       POSTGRES_USER: keycloak
       POSTGRES_PASSWORD: keycloak
     networks:
-      - keycloak_network
+      - car-rental-network
+
+  postgres-reservation:
+    container_name: postgres-reservation
+    image: docker.io/library/postgres:14
+    environment:
+      POSTGRES_DB: reservation
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    networks:
+      - car-rental-network
+
+  mysql-inventory:
+    container_name: mysql-inventory
+    image: docker.io/library/mysql:8.0
+    environment:
+      MYSQL_DATABASE: inventory
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+      MYSQL_ROOT_PASSWORD: rootpass
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - car-rental-network
 
   keycloak:
     container_name: keycloak
@@ -27,15 +49,125 @@ services:
       KC_DB_URL: jdbc:postgresql://postgres/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak
+      KC_HTTP_ENABLED: "true"
     ports:
-      - 7777:8080
+      - "8080:8080"
     restart: always
     depends_on:
       - postgres
     networks:
-      - keycloak_network
+      - car-rental-network
+
+  users-service:
+    build:
+      context: ./users-service
+      dockerfile: src/main/docker/Dockerfile.jvm
+    environment:
+      QUARKUS_PROFILE: prod
+      QUARKUS_OIDC_AUTH_PUBLIC_SERVER_URL: http://keycloak:8080/realms/car-rental
+      QUARKUS_OIDC_CLIENT_ID: users-service
+      QUARKUS_OIDC_CONNECTION_RETRY_COUNT: 10
+      QUARKUS_OIDC_CONNECTION_TIMEOUT: 30000
+      GLOBAL_QUARKUS_MANAGEMENT_PORT: 21054
+      REST_CLIENT_RESERVATION_SERVICE_URL: http://reservation-service:8080
+    ports:
+      - "8084:8080"
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:21054/q/health/ready"]
+      interval: 15s
+      retries: 5
+      timeout: 2s
+      start_period: 10s
+    restart: unless-stopped
+    depends_on:
+      mysql-inventory:
+        condition: service_started
+    networks:
+      - car-rental-network
+
+  inventory-service:
+    build:
+      context: ./inventory-service
+      dockerfile: src/main/docker/Dockerfile.jvm
+    environment:
+      QUARKUS_PROFILE: prod
+      QUARKUS_HTTP_PORT: 8080
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:mysql://mysql-inventory:3306/inventory
+      QUARKUS_DATASOURCE_USERNAME: user
+      QUARKUS_DATASOURCE_PASSWORD: pass
+      QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: drop-and-create
+      QUARKUS_DATASOURCE_REACTIVE_RECONNECT_ATTEMPTS: 10
+      QUARKUS_DATASOURCE_REACTIVE_RECONNECT_INTERVAL: 5s
+      GLOBAL_QUARKUS_MANAGEMENT_PORT: 21054
+    ports:
+      - "8083:8080"
+      - "9000:9000"
+    healthcheck:
+      test: [ "CMD", "curl", "http://localhost:21054/q/health/ready" ]
+      interval: 15s
+      retries: 5
+      timeout: 2s
+      start_period: 10s
+    depends_on:
+      mysql-inventory:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - car-rental-network
+
+  reservation-service:
+    build:
+      context: ./reservation-service
+      dockerfile: src/main/docker/Dockerfile.jvm
+    environment:
+      QUARKUS_PROFILE: prod
+      QUARKUS_HTTP_PORT: 8080
+      QUARKUS_OIDC_AUTH_SERVER_URL: http://keycloak:8080/realms/car-rental
+      QUARKUS_OIDC_CLIENT_ID: reservation-service
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres-reservation:5432/reservation
+      QUARKUS_DATASOURCE_USERNAME: user
+      QUARKUS_DATASOURCE_PASSWORD: pass
+      QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: drop-and-create
+      QUARKUS_SMALLRYE_GRAPHQL_CLIENT_INVENTORY_URL: http://inventory-service:8080/graphql
+      QUARKUS_OIDC_CONNECTION_RETRY_COUNT: 10
+      QUARKUS_OIDC_CONNECTION_TIMEOUT: 30000
+      QUARKUS_DATASOURCE_REACTIVE_RECONNECT_ATTEMPTS: 10
+      QUARKUS_DATASOURCE_REACTIVE_RECONNECT_INTERVAL: 5s
+      GLOBAL_QUARKUS_MANAGEMENT_PORT: 21054
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "http://localhost:21054/q/health/ready" ]
+      interval: 15s
+      retries: 5
+      timeout: 2s
+      start_period: 10s
+    depends_on:
+      postgres-reservation:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - car-rental-network
+
+  rental-service:
+    build:
+      context: ./rental-service
+      dockerfile: src/main/docker/Dockerfile.jvm
+    environment:
+      QUARKUS_HTTP_PORT: 8080
+      GLOBAL_QUARKUS_MANAGEMENT_PORT: 21054
+    ports:
+      - "8082:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "http://localhost:21054/q/health/ready" ]
+      interval: 15s
+      retries: 5
+      timeout: 2s
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - car-rental-network
 
 networks:
-  keycloak_network:
+  car-rental-network:
     driver: bridge
-

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.acme</groupId>
+    <artifactId>car-app-core</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <properties>
+        <core.quarkus.platform.group-id>io.quarkus.platform</core.quarkus.platform.group-id>
+        <core.quarkus.platform.artifact-id>quarkus-bom</core.quarkus.platform.artifact-id>
+        <core.quarkus.version>3.15.1</core.quarkus.version>
+        <core.maven.compiler.release>21</core.maven.compiler.release>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>${core.quarkus.platform.group-id}</groupId>
+                <artifactId>${core.quarkus.platform.artifact-id}</artifactId>
+                <version>${core.quarkus.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-health</artifactId>
+        </dependency>
+    </dependencies>
+
+    <modules>
+        <module>inventory-cli</module>
+        <module>inventory-service</module>
+        <module>rental-service</module>
+        <module>reservation-service</module>
+        <module>users-service</module>
+    </modules>
+
+<!--    TODO вынести dependencyManagement и pluginManagement -->
+
+</project>

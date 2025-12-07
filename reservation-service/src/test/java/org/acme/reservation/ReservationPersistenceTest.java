@@ -1,6 +1,7 @@
 package org.acme.reservation;
 
 import io.quarkus.test.hibernate.reactive.panache.TransactionalUniAsserter;
+import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.vertx.RunOnVertxContext;
 import org.acme.reservation.entity.Reservation;
@@ -14,6 +15,7 @@ import java.time.temporal.ChronoUnit;
 public class ReservationPersistenceTest {
 
     @Test
+    @TestTransaction
     @RunOnVertxContext
     public void testCreateReservation(TransactionalUniAsserter asserter) {
         Reservation reservation = new Reservation();
