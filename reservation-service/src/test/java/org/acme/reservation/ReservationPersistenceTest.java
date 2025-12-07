@@ -1,7 +1,7 @@
 package org.acme.reservation;
 
+import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.transaction.Transactional;
 import org.acme.reservation.entity.Reservation;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -13,7 +13,7 @@ import java.time.temporal.ChronoUnit;
 public class ReservationPersistenceTest {
 
     @Test
-    @Transactional
+    @TestTransaction
     public void testCreateReservation() {
         Reservation reservation = new Reservation();
         reservation.startDay = LocalDate.now().plus(5, ChronoUnit.DAYS);

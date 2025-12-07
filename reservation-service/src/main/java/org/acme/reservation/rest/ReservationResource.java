@@ -8,7 +8,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import io.quarkus.logging.Log;
+import io.quarkus.security.Authenticated;
 import io.smallrye.graphql.client.GraphQLClient;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
@@ -29,6 +31,7 @@ import org.jboss.resteasy.reactive.RestQuery;
 
 @Path("reservation")
 @Produces(MediaType.APPLICATION_JSON)
+@Authenticated
 public class ReservationResource {
 
     private final InventoryClient inventoryClient;
@@ -43,8 +46,9 @@ public class ReservationResource {
         this.rentalClient = rentalClient;
     }
 
-    @Consumes(MediaType.APPLICATION_JSON)
     @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("car-rental-reservation-create")
     @Transactional
     public Reservation make(Reservation reservation) {
         reservation.userId = context.getUserPrincipal() != null ?
@@ -60,6 +64,7 @@ public class ReservationResource {
 
     @GET
     @Path("availability")
+    @RolesAllowed("car-rental-car-read")
     public Collection<Car> availability(@RestQuery LocalDate startDate,
                                         @RestQuery LocalDate endDate) {
         // obtain all cars from inventory
@@ -84,6 +89,7 @@ public class ReservationResource {
 
     @GET
     @Path("all")
+    @RolesAllowed("car-rental-reservation-read")
     public Collection<Reservation> allReservations() {
         String userId = context.getUserPrincipal() != null ?
             context.getUserPrincipal().getName() : null;

@@ -47,6 +47,14 @@
   "failureFactor" : 30,
   "roles" : {
     "realm" : [ {
+      "id" : "958f9ad1-aba8-4b81-b40c-75d0b06889c3",
+      "name" : "car-rental-reservation-create",
+      "description" : "Allows reserving cars in car rental services",
+      "composite" : false,
+      "clientRole" : false,
+      "containerId" : "f4384e0c-59f0-4df2-9f64-8f98e138cdde",
+      "attributes" : { }
+    }, {
       "id" : "d015dc6b-b692-4d3e-931b-13fc16ed5982",
       "name" : "uma_authorization",
       "description" : "${role_uma_authorization}",
@@ -69,9 +77,25 @@
       "containerId" : "f4384e0c-59f0-4df2-9f64-8f98e138cdde",
       "attributes" : { }
     }, {
+      "id" : "cd4fa79b-d9f4-46a5-a2c1-1271a44f3ac9",
+      "name" : "car-rental-car-read",
+      "description" : "Allows reading car information",
+      "composite" : false,
+      "clientRole" : false,
+      "containerId" : "f4384e0c-59f0-4df2-9f64-8f98e138cdde",
+      "attributes" : { }
+    }, {
       "id" : "ba1588eb-42bc-4941-9d71-1e0fc9377e7c",
       "name" : "offline_access",
       "description" : "${role_offline-access}",
+      "composite" : false,
+      "clientRole" : false,
+      "containerId" : "f4384e0c-59f0-4df2-9f64-8f98e138cdde",
+      "attributes" : { }
+    }, {
+      "id" : "38439aa7-b8a9-454d-93b2-3ecee160e455",
+      "name" : "car-rental-reservation-read",
+      "description" : "Allows reading for car rental reservation lists and items",
       "composite" : false,
       "clientRole" : false,
       "containerId" : "f4384e0c-59f0-4df2-9f64-8f98e138cdde",
@@ -311,6 +335,14 @@
         "containerId" : "7de2bae8-1c17-4e54-95f3-1c503f6d6376",
         "attributes" : { }
       }, {
+        "id" : "7505ee2c-13b7-41c6-b107-cce961ee546c",
+        "name" : "view-groups",
+        "description" : "${role_view-groups}",
+        "composite" : false,
+        "clientRole" : true,
+        "containerId" : "7de2bae8-1c17-4e54-95f3-1c503f6d6376",
+        "attributes" : { }
+      }, {
         "id" : "4ba68e2a-f2ac-42e8-88b3-16cad1e19e47",
         "name" : "delete-account",
         "description" : "${role_delete-account}",
@@ -329,7 +361,25 @@
       } ]
     }
   },
-  "groups" : [ ],
+  "groups" : [ {
+    "id" : "58e1fe72-54e8-480c-9e7f-f285cba453c1",
+    "name" : "car-rental-manager",
+    "description" : "",
+    "path" : "/car-rental-manager",
+    "subGroups" : [ ],
+    "attributes" : { },
+    "realmRoles" : [ "car-rental-reservation-create", "car-rental-car-read", "car-rental-reservation-read" ],
+    "clientRoles" : { }
+  }, {
+    "id" : "80a75a9c-59e5-4b6d-b513-6d0e813f1975",
+    "name" : "car-rental-viewer",
+    "description" : "",
+    "path" : "/car-rental-viewer",
+    "subGroups" : [ ],
+    "attributes" : { },
+    "realmRoles" : [ "car-rental-car-read", "car-rental-reservation-read" ],
+    "clientRoles" : { }
+  } ],
   "defaultRole" : {
     "id" : "63623582-f13a-49ae-9379-57eb89307b56",
     "name" : "default-roles-car-rental",
@@ -388,7 +438,7 @@
     "requiredActions" : [ ],
     "realmRoles" : [ "default-roles-car-rental" ],
     "notBefore" : 0,
-    "groups" : [ ]
+    "groups" : [ "/car-rental-viewer" ]
   }, {
     "id" : "0609be5d-047c-4264-804c-4843c2238b87",
     "createdTimestamp" : 1727103396503,
@@ -411,7 +461,7 @@
     "requiredActions" : [ ],
     "realmRoles" : [ "default-roles-car-rental" ],
     "notBefore" : 0,
-    "groups" : [ ]
+    "groups" : [ "/car-rental-manager" ]
   } ],
   "scopeMappings" : [ {
     "clientScope" : "offline_access",

@@ -9,7 +9,6 @@ import org.eclipse.microprofile.graphql.GraphQLApi;
 import org.eclipse.microprofile.graphql.Mutation;
 import org.eclipse.microprofile.graphql.Query;
 
-import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Optional;
 
