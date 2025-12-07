@@ -8,7 +8,6 @@ import io.smallrye.mutiny.Uni;
 import io.smallrye.reactive.messaging.MutinyEmitter;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -34,7 +33,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 
-@Path("reservation")
+@Path("/reservation")
 @Produces(MediaType.APPLICATION_JSON)
 @Authenticated
 public class ReservationResource {
@@ -95,7 +94,7 @@ public class ReservationResource {
     }
 
     @GET
-    @Path("availability")
+    @Path("/availability")
     @RolesAllowed("car-rental-car-read")
     public Uni<Collection<Car>> availability(@RestQuery LocalDate startDate,
                                              @RestQuery LocalDate endDate) {
@@ -122,7 +121,7 @@ public class ReservationResource {
     }
 
     @GET
-    @Path("all")
+    @Path("/all")
     @RolesAllowed("car-rental-reservation-read")
     public Uni<List<Reservation>> allReservations() {
         String userId = context.getUserPrincipal() != null ?
