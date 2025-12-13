@@ -2,6 +2,7 @@ package org.acme.rental;
 
 import io.quarkus.logging.Log;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
@@ -11,6 +12,7 @@ import org.acme.rental.billing.InvoiceAdjust;
 import org.acme.rental.entity.Rental;
 import org.acme.rental.reservation.Reservation;
 import org.acme.rental.reservation.ReservationClient;
+import org.acme.rental.service.RentalService;
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Emitter;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -30,6 +32,9 @@ public class RentalResource {
     ReservationClient reservationClient;
 
     @Inject
+    RentalService rentalService;
+
+    @Inject
     @Channel("invoices-adjust")
     Emitter<InvoiceAdjust> adjustmentEmitter;
 
@@ -40,19 +45,12 @@ public class RentalResource {
         Log.infof("Starting rental for %s with reservation %s",
             userId, reservationId);
 
-        Rental rental = new Rental();
-        rental.userId = userId;
-        rental.reservationId = reservationId;
-        rental.startDate = LocalDate.now();
-        rental.active = true;
-
-        rental.persist();
-
-        return rental;
+        return rentalService.createRental(userId, reservationId, LocalDate.now());
     }
 
     @PUT
     @Path("/end/{userId}/{reservationId}")
+    @Transactional
     public Rental end(String userId, Long reservationId) {
         Log.infof("Ending rental for %s with reservation %s",
             userId, reservationId);
@@ -75,7 +73,7 @@ public class RentalResource {
 
         rental.endDate = today;
         rental.active = false;
-        rental.update();
+        rental.persist();
         return rental;
     }
 

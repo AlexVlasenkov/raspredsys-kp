@@ -5,7 +5,6 @@ import io.quarkus.logging.Log;
 import io.quarkus.security.Authenticated;
 import io.smallrye.graphql.client.GraphQLClient;
 import io.smallrye.mutiny.Uni;
-import io.smallrye.reactive.messaging.MutinyEmitter;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -14,18 +13,16 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import org.acme.reservation.billing.Invoice;
 import org.acme.reservation.entity.Reservation;
 import org.acme.reservation.inventory.Car;
 import org.acme.reservation.inventory.GraphQLInventoryClient;
 import org.acme.reservation.inventory.InventoryClient;
 import org.acme.reservation.rental.RentalClient;
-import org.eclipse.microprofile.reactive.messaging.Channel;
+import org.acme.reservation.service.InvoiceService;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.resteasy.reactive.RestQuery;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -38,8 +35,6 @@ import java.util.stream.Collectors;
 @Authenticated
 public class ReservationResource {
 
-    public static final double STANDARD_RATE_PER_DAY = 19.99;
-
     private final InventoryClient inventoryClient;
     private final RentalClient rentalClient;
 
@@ -47,8 +42,7 @@ public class ReservationResource {
     jakarta.ws.rs.core.SecurityContext context;
 
     @Inject
-    @Channel("invoices")
-    MutinyEmitter<Invoice> invoiceEmitter;
+    InvoiceService invoiceService;
 
     public ReservationResource(@GraphQLClient("inventory") GraphQLInventoryClient inventoryClient,
                                @RestClient RentalClient rentalClient) {
@@ -62,35 +56,26 @@ public class ReservationResource {
     @WithTransaction
     public Uni<Reservation> make(Reservation reservation) {
         reservation.userId = context.getUserPrincipal() != null ?
-            context.getUserPrincipal().getName() : "anonymous";
+                context.getUserPrincipal().getName() : "anonymous";
 
         return reservation.<Reservation>persist().onItem()
-            .call(persistedReservation -> {
-                Log.info("Successfully reserved reservation "
-                    + persistedReservation);
+                .call(persistedReservation -> {
+                    Log.info("Successfully reserved reservation "
+                            + persistedReservation);
 
-                Uni<Void> invoiceUni = invoiceEmitter.send(
-                    new Invoice(reservation, computePrice(reservation)))
-                    .onFailure().invoke(throwable ->
-                        Log.errorf("Couldn't create invoice for %s. %s%n",
-                        persistedReservation, throwable.getMessage()));
+                    Uni<Void> invoiceUni = invoiceService.sendReservationInvoice(persistedReservation);
 
-                if (persistedReservation.startDay.equals(LocalDate.now())) {
-                    return invoiceUni.chain(() ->
-                        rentalClient.start(persistedReservation.userId,
-                            persistedReservation.id)
-                        .onItem().invoke(rental ->
-                            Log.info("Successfully started rental " + rental))
-                        .replaceWith(persistedReservation));
-                }
-                return invoiceUni
-                    .replaceWith(persistedReservation);
-            });
-    }
-
-    private double computePrice(Reservation reservation) {
-        return (ChronoUnit.DAYS.between(reservation.startDay,
-            reservation.endDay) + 1) * STANDARD_RATE_PER_DAY;
+                    if (persistedReservation.startDay.equals(LocalDate.now())) {
+                        return invoiceUni.chain(() ->
+                                rentalClient.start(persistedReservation.userId,
+                                                persistedReservation.id)
+                                        .onItem().invoke(rental ->
+                                                Log.info("Successfully started rental " + rental))
+                                        .replaceWith(persistedReservation));
+                    }
+                    return invoiceUni
+                            .replaceWith(persistedReservation);
+                });
     }
 
     @GET
@@ -125,11 +110,11 @@ public class ReservationResource {
     @RolesAllowed("car-rental-reservation-read")
     public Uni<List<Reservation>> allReservations() {
         String userId = context.getUserPrincipal() != null ?
-            context.getUserPrincipal().getName() : null;
+                context.getUserPrincipal().getName() : null;
         return Reservation.<Reservation>listAll()
-            .onItem().transform(reservations -> reservations.stream()
-                .filter(reservation -> userId == null ||
-                    userId.equals(reservation.userId))
-                .collect(Collectors.toList()));
+                .onItem().transform(reservations -> reservations.stream()
+                        .filter(reservation -> userId == null ||
+                                userId.equals(reservation.userId))
+                        .collect(Collectors.toList()));
     }
 }
