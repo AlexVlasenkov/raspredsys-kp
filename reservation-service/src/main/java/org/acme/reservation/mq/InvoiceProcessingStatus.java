@@ -1,12 +1,20 @@
 package org.acme.reservation.mq;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.acme.reservation.billing.Invoice;
 import org.acme.reservation.rental.Rental;
 
 public class InvoiceProcessingStatus {
 
+    @Valid
     private Rental payload;
+
+    @Valid
+    @NotNull(message = "Previous payload cannot be null")
     private Invoice previousPayload;
+
+    @NotNull(message = "Status cannot be null")
     private ProcessingStatus status;
 
     public InvoiceProcessingStatus(Rental payload, Invoice previousPayload, ProcessingStatus status) {

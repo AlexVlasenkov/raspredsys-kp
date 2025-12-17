@@ -7,6 +7,8 @@ import io.smallrye.graphql.client.GraphQLClient;
 import io.smallrye.mutiny.Uni;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -27,8 +29,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
-
 
 @Path("/reservation")
 @Produces(MediaType.APPLICATION_JSON)
@@ -43,6 +45,9 @@ public class ReservationResource {
 
     @Inject
     InvoiceService invoiceService;
+    
+    @Inject
+    Validator validator; // Добавляем Validator
 
     public ReservationResource(@GraphQLClient("inventory") GraphQLInventoryClient inventoryClient,
                                @RestClient RentalClient rentalClient) {
@@ -55,6 +60,19 @@ public class ReservationResource {
     @RolesAllowed("car-rental-reservation-create")
     @WithTransaction
     public Uni<Reservation> make(Reservation reservation) {
+        // Валидируем входящий Reservation перед обработкой
+        Set<ConstraintViolation<Reservation>> violations = validator.validate(reservation);
+        if (!violations.isEmpty()) {
+            String errorMessage = violations.stream()
+                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+                .collect(Collectors.joining(", "));
+                
+            return Uni.createFrom().failure(new IllegalArgumentException(
+                "Reservation validation failed: " + errorMessage
+            ));
+        }
+        
+        // Если валидация прошла успешно, продолжаем
         reservation.userId = context.getUserPrincipal() != null ?
                 context.getUserPrincipal().getName() : "anonymous";
 
