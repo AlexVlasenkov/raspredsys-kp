@@ -9,13 +9,11 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.acme.reservation.entity.Reservation;
+import org.acme.reservation.entity.ReservationState;
 import org.acme.reservation.inventory.Car;
 import org.acme.reservation.inventory.GraphQLInventoryClient;
 import org.acme.reservation.inventory.InventoryClient;
@@ -47,7 +45,7 @@ public class ReservationResource {
     InvoiceService invoiceService;
     
     @Inject
-    Validator validator; // Добавляем Validator
+    Validator validator;
 
     public ReservationResource(@GraphQLClient("inventory") GraphQLInventoryClient inventoryClient,
                                @RestClient RentalClient rentalClient) {
@@ -60,7 +58,6 @@ public class ReservationResource {
     @RolesAllowed("car-rental-reservation-create")
     @WithTransaction
     public Uni<Reservation> make(Reservation reservation) {
-        // Валидируем входящий Reservation перед обработкой
         Set<ConstraintViolation<Reservation>> violations = validator.validate(reservation);
         if (!violations.isEmpty()) {
             String errorMessage = violations.stream()
@@ -72,14 +69,12 @@ public class ReservationResource {
             ));
         }
         
-        // Если валидация прошла успешно, продолжаем
         reservation.userId = context.getUserPrincipal() != null ?
                 context.getUserPrincipal().getName() : "anonymous";
 
         return reservation.<Reservation>persist().onItem()
                 .call(persistedReservation -> {
-                    Log.info("Successfully reserved reservation "
-                            + persistedReservation);
+                    Log.info("Successfully reserved reservation " + persistedReservation);
 
                     Uni<Void> invoiceUni = invoiceService.sendReservationInvoice(persistedReservation);
 
@@ -101,19 +96,15 @@ public class ReservationResource {
     @RolesAllowed("car-rental-car-read")
     public Uni<Collection<Car>> availability(@RestQuery LocalDate startDate,
                                              @RestQuery LocalDate endDate) {
-        // obtain all cars from inventory
         Uni<List<Car>> availableCarsUni = inventoryClient.allCars();
-        // get all current reservations
         Uni<List<Reservation>> reservationsUni = Reservation.listAll();
 
         return Uni.combine().all().unis(availableCarsUni, reservationsUni).with((availableCars, reservations) -> {
-            // create a map from id to car
             Map<Long, Car> carsById = new HashMap<>();
             for (Car car : availableCars) {
                 carsById.put(car.id, car);
             }
 
-            // for each reservation, remove the car from the map
             for (Reservation reservation : reservations) {
                 if (reservation.isReserved(startDate, endDate)) {
                     carsById.remove(reservation.carId);
@@ -134,5 +125,125 @@ public class ReservationResource {
                         .filter(reservation -> userId == null ||
                                 userId.equals(reservation.userId))
                         .collect(Collectors.toList()));
+    }
+
+    @PUT
+    @Path("/{id}")
+    @RolesAllowed("car-rental-reservation-create")
+    @WithTransaction
+    public Uni<Response> extendReservation(@PathParam("id") Long id) {
+        String currentUser = getCurrentUserId();
+        
+        return findReservationByIdAndUser(id, currentUser)
+            .onItem().transformToUni(reservation -> {
+                if (reservation == null) {
+                    return Uni.createFrom().item(
+                        Response.status(Response.Status.NOT_FOUND)
+                            .entity("Reservation not found")
+                            .build()
+                    );
+                }
+                
+                if (reservation.state != ReservationState.DRAFT && 
+                    reservation.state != ReservationState.ACTIVE) {
+                    return Uni.createFrom().item(
+                        Response.status(Response.Status.BAD_REQUEST)
+                            .entity("Cannot extend reservation in state: " + reservation.state)
+                            .build()
+                    );
+                }
+                
+                if (reservation.endDay.isBefore(LocalDate.now())) {
+                    return Uni.createFrom().item(
+                        Response.status(Response.Status.BAD_REQUEST)
+                            .entity("Cannot extend expired reservation")
+                            .build()
+                    );
+                }
+                
+                LocalDate newEndDay = reservation.endDay.plusDays(1);
+                
+                return Reservation.update("endDay = ?1 where id = ?2", newEndDay, reservation.id)
+                    .onItem().transform(rowsUpdated -> {
+                        if (rowsUpdated == 0) {
+                            return Response.status(Response.Status.NOT_FOUND)
+                                .entity("Reservation not updated")
+                                .build();
+                        }
+                        
+                        Log.infof("Extended reservation %d to %s", reservation.id, newEndDay);
+                        
+                        reservation.endDay = newEndDay;
+                        return Response.ok(reservation).build();
+                    });
+            });
+    }
+
+    @DELETE
+    @Path("/{id}")
+    @RolesAllowed("car-rental-reservation-create")
+    @WithTransaction
+    public Uni<Response> cancelReservation(@PathParam("id") Long id) {
+        String currentUser = getCurrentUserId();
+        
+        return findReservationByIdAndUser(id, currentUser)
+            .onItem().transformToUni(reservation -> {
+                if (reservation == null) {
+                    return Uni.createFrom().item(
+                        Response.status(Response.Status.NOT_FOUND)
+                            .entity("Reservation not found")
+                            .build()
+                    );
+                }
+                
+                // отмена бронирования
+                if (reservation.state == ReservationState.FINISHED) {
+                    return Uni.createFrom().item(
+                        Response.status(Response.Status.BAD_REQUEST)
+                            .entity("Cannot cancel finished reservation")
+                            .build()
+                    );
+                }
+                
+                if (reservation.state == ReservationState.DECLINED) {
+                    return Uni.createFrom().item(
+                        Response.status(Response.Status.BAD_REQUEST)
+                            .entity("Reservation is already cancelled")
+                            .build()
+                    );
+                }
+                
+                ReservationState oldState = reservation.state;
+                
+                return Reservation.update("state = ?1 where id = ?2", ReservationState.DECLINED, reservation.id)
+                    .onItem().transform(rowsUpdated -> {
+                        if (rowsUpdated == 0) {
+                            return Response.status(Response.Status.NOT_FOUND)
+                                .entity("Reservation not updated")
+                                .build();
+                        }
+                        
+                        Log.infof("Cancelled reservation %d (changed from %s to DECLINED)", 
+                            reservation.id, oldState);
+                        
+                        // аренда началась
+                        if (reservation.startDay.isBefore(LocalDate.now().plusDays(1)) || 
+                            reservation.startDay.equals(LocalDate.now())) {
+                            Log.warnf("Reservation %d cancelled but rental might be active", reservation.id);
+                        }
+                        
+                        reservation.state = ReservationState.DECLINED;
+                        return Response.ok(reservation).build();
+                    });
+            });
+    }
+
+    private String getCurrentUserId() {
+        return context.getUserPrincipal() != null ? 
+               context.getUserPrincipal().getName() : "anonymous";
+    }
+
+    private Uni<Reservation> findReservationByIdAndUser(Long id, String userId) {
+        return Reservation.find("id = ?1 and userId = ?2", id, userId).firstResult();
     }
 }
